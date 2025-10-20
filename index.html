@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LeadArts AI Image Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* For custom scrollbars to match the dark theme */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #1f2937; /* bg-gray-800 */
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #4b5563; /* bg-gray-600 */
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #6b7280; /* bg-gray-500 */
+      }
+      .hidden {
+        display: none;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://esm.sh/@google/genai@^1.10.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-gray-900 text-gray-200 font-sans">
+    
+    <!-- Side Menu -->
+    <div id="side-menu-overlay" class="fixed inset-0 bg-black/60 z-40 transition-opacity opacity-0 pointer-events-none"></div>
+    <aside id="side-menu" class="fixed top-0 left-0 h-full w-full max-w-sm bg-gray-800 z-50 transform transition-transform duration-300 ease-in-out flex flex-col shadow-2xl -translate-x-full" role="dialog" aria-modal="true" aria-labelledby="history-heading">
+      <header class="flex items-center justify-between p-4 border-b border-gray-700 flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd"></path></svg>
+          <h2 id="history-heading" class="text-lg font-bold text-white">History</h2>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="clear-history-button" class="text-xs text-gray-400 hover:text-red-400 disabled:text-gray-600 disabled:cursor-not-allowed transition-colors">Clear All</button>
+          <button id="close-menu-button" class="p-2 -mr-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white transition-colors" aria-label="Close history menu">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+      </header>
+      <div id="history-list" class="flex-grow overflow-y-auto p-4 space-y-2">
+        <!-- History items will be injected here -->
+      </div>
+      <div class="p-4 border-t border-gray-700/50 flex-shrink-0">
+        <div class="flex items-center gap-3 mb-3">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"></path></svg>
+            <h3 id="feedback-heading" class="text-lg font-bold text-white">Feedback</h3>
+        </div>
+        <form id="feedback-form" class="space-y-3">
+          <div id="feedback-success" class="hidden bg-green-900/50 text-green-300 p-3 rounded-lg text-center transition-all duration-300">
+            <p class="font-semibold">Thank you for your feedback!</p>
+          </div>
+          <textarea id="feedback-input" placeholder="Have a suggestion or found a bug? Let us know!" class="w-full h-24 bg-gray-700/50 border border-gray-600 rounded-lg p-3 text-sm text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors resize-none disabled:opacity-50" rows="4" aria-label="Feedback input"></textarea>
+          <button id="feedback-submit" type="submit" class="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white font-bold py-2 px-3 rounded-lg hover:bg-indigo-700 transition-all duration-200 disabled:bg-gray-600 disabled:cursor-not-allowed disabled:text-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-indigo-500">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0015.462-7.5 1.5 1.5 0 000-2.362A60.519 60.519 0 003.478 2.405z"></path></svg>
+            Submit Feedback
+          </button>
+        </form>
+      </div>
+    </aside>
+
+    <!-- Main App Wrapper -->
+    <div class="flex flex-col min-h-screen">
+      <header class="flex items-center justify-between p-4 border-b border-gray-700/50 flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <button id="open-menu-button" class="p-2 -ml-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors" aria-label="Toggle history menu">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"></path></svg>
+          </button>
+          <svg class="h-8 w-8" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="50" fill="url(#paint0_linear_1_2)"></circle><defs><linearGradient id="paint0_linear_1_2" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse"><stop stop-color="#4F46E5"></stop><stop offset="1" stop-color="#A855F7"></stop></linearGradient></defs></svg>
+          <div class="flex items-center gap-2">
+              <h1 class="text-xl font-bold text-white">LeadArts AI</h1>
+          </div>
+        </div>
+         <div class="flex items-center gap-2">
+             <p class="text-sm text-gray-400">
+                  Powered by LeadArts
+              </p>
+          </div>
+      </header>
+
+      <main class="p-4 lg:p-8 flex-grow">
+        <div class="flex flex-col gap-4 lg:gap-8">
+          <!-- Notice Banner -->
+          <div id="notice-banner" class="hidden bg-teal-900/50 text-teal-200 border-l-4 border-teal-500 p-4 rounded-r-lg shadow-lg" role="status">
+            <div class="flex items-center">
+              <div class="flex-shrink-0"><svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-teal-400 mr-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12.75 3.03v.568c0 .334.148.65.405.864l1.068.89c.442.369.535 1.024.216 1.45l-.549.732a1.125 1.125 0 01-1.447.216l-1.068-.89a.875.875 0 00-1.129 0l-1.068.89a1.125 1.125 0 01-1.447-.216l-.549-.732a1.125 1.125 0 01.216-1.45l1.068-.89a.875.875 0 00.405-.864v-.568c0-.621-.504-1.125-1.125-1.125H6.375a1.125 1.125 0 00-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125h1.5a.375.375 0 01.375.375V8.25c0 .621-.504 1.125-1.125 1.125H4.875c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125h1.5a.375.375 0 01.375.375v1.5c0 .621-.504 1.125-1.125 1.125H4.875c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125h14.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-1.5a.375.375 0 01-.375-.375v-1.5c0 .621.504-1.125 1.125-1.125h1.5c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-1.5a.375.375 0 01-.375-.375V8.25c0 .621.504-1.125 1.125-1.125h1.5c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H13.875c-.621 0-1.125.504-1.125 1.125z"></path></svg></div>
+              <div class="flex-grow">
+                <p class="font-bold text-teal-100">Free & Unlimited Generations</p>
+                <p class="text-sm text-teal-300">This image generator is completely free, with no credit system or paid features. Enjoy unlimited creations!</p>
+              </div>
+              <div class="ml-4 flex-shrink-0">
+                <button id="dismiss-notice-button" class="p-1 rounded-full text-teal-300 hover:bg-teal-800/50 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-teal-900 focus:ring-teal-400 transition-colors" aria-label="Dismiss notice">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          <!-- API Key Banner -->
+          <div id="api-key-banner" class="hidden bg-red-900/50 text-red-300 border-l-4 border-red-500 p-4 rounded-r-lg" role="alert">
+            <div class="flex">
+              <div class="py-1"><svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-red-400 mr-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"></path></svg></div>
+              <div>
+                <p class="font-bold text-red-200">API Key Not Found</p>
+                <p class="text-sm">The application is running in a disabled state because the Gemini API key is not configured. Please set the <code>API_KEY</code> environment variable to enable functionality.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- Settings Panel -->
+            <div class="lg:col-span-4 xl:col-span-3">
+              <div id="settings-panel" class="bg-gray-800 rounded-xl p-4 md:p-6 space-y-6 sticky top-8">
+                <!-- Prompt Input -->
+                <div class="space-y-4">
+                  <div>
+                    <label for="prompt-input" class="block text-sm font-bold text-white mb-2">Prompt</label>
+                    <textarea id="prompt-input" placeholder="A hyper-realistic photograph of a futuristic city at sunset, with flying cars and neon lights..." class="w-full h-32 bg-gray-700/50 border border-gray-600 rounded-lg p-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors resize-none"></textarea>
+                  </div>
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <button id="random-prompt-button" class="flex items-center justify-center gap-2 w-full text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 font-semibold py-2 px-3 rounded-md transition-colors duration-200 disabled:bg-gray-700/50 disabled:text-gray-500 disabled:cursor-not-allowed"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M15.31 4.69a.75.75 0 01-1.06 0l-1.5-1.5V11a.75.75 0 01-1.5 0V3.19l-1.5 1.5a.75.75 0 01-1.06-1.06l3-3a.75.75 0 011.06 0l3 3a.75.75 0 010 1.06zM4.69 15.31a.75.75 0 011.06 0l1.5 1.5V9a.75.75 0 011.5 0v7.81l1.5-1.5a.75.75 0 111.06 1.06l-3 3a.75.75 0 01-1.06 0l-3-3a.75.75 0 010-1.06zM15 9a.75.75 0 01-.75.75H5.75a.75.75 0 010-1.5h8.5A.75.75 0 0115 9z" clip-rule="evenodd"></path></svg>Random</button>
+                    <button id="describe-image-button" class="flex items-center justify-center gap-2 w-full text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 font-semibold py-2 px-3 rounded-md transition-colors duration-200 disabled:bg-gray-700/50 disabled:text-gray-500 disabled:cursor-not-allowed"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3.75a2 2 0 100 4 2 2 0 000-4z"></path><path fill-rule="evenodd" d="M7.707 2.293a.75.75 0 00-1.06 0L4.397 4.543a.75.75 0 00-.22.53l-.32 3.84a.75.75 0 00.94.81l3.84-.32a.75.75 0 00.53-.22L13.46 7.293a.75.75 0 000-1.06l-4.753-4.75z" clip-rule="evenodd"></path><path d="M3 8.25a.75.75 0 01.75-.75h4.5a.75.75 0 010 1.5h-4.5A.75.75 0 013 8.25z"></path><path d="M4.5 12.5a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H5.25a.75.75 0 01-.75-.75z"></path><path d="M4.5 15.5a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H5.25a.75.75 0 01-.75-.75z"></path></svg>Describe</button>
+                    <button id="improve-prompt-button" class="flex items-center justify-center gap-2 w-full text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 font-semibold py-2 px-3 rounded-md transition-colors duration-200 disabled:bg-gray-700/50 disabled:text-gray-500 disabled:cursor-not-allowed"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.3 2.242c-.23-.464-.97-.464-1.2 0l-1.63 3.303-3.64.53c-.51.075-.71.69-.34 1.05l2.63 2.56-.62 3.62c-.08.51.44.89.89.47l3.25-1.71 3.25 1.71c.45.42.98.04.89-.47l-.62-3.62 2.63-2.56c.37-.36.17-.97-.34-1.05l-3.64-.53L11.3 2.242z" clip-rule="evenodd"></path></svg>AI Improve</button>
+                  </div>
+                </div>
+                <!-- Aspect Ratio Selector -->
+                <div>
+                  <h3 class="text-sm font-bold text-white mb-2">Aspect Ratio</h3>
+                  <div id="aspect-ratio-selector" class="grid grid-cols-5 gap-2">
+                    <button data-value="1:1" class="aspect-ratio-button flex flex-col items-center justify-center gap-1 p-2 rounded-lg border-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><rect width="20" height="20" x="2" y="2" rx="2"></rect></svg><span class="text-xs font-semibold">1:1</span></button>
+                    <button data-value="16:9" class="aspect-ratio-button flex flex-col items-center justify-center gap-1 p-2 rounded-lg border-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><rect width="22" height="14" x="1" y="5" rx="2"></rect></svg><span class="text-xs font-semibold">16:9</span></button>
+                    <button data-value="9:16" class="aspect-ratio-button flex flex-col items-center justify-center gap-1 p-2 rounded-lg border-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><rect width="14" height="22" x="5" y="1" rx="2"></rect></svg><span class="text-xs font-semibold">9:16</span></button>
+                    <button data-value="4:3" class="aspect-ratio-button flex flex-col items-center justify-center gap-1 p-2 rounded-lg border-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><rect width="22" height="14" x="1" y="5" rx="2"></rect></svg><span class="text-xs font-semibold">4:3</span></button>
+                    <button data-value="3:4" class="aspect-ratio-button flex flex-col items-center justify-center gap-1 p-2 rounded-lg border-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><rect width="14" height="22" x="5" y="1" rx="2"></rect></svg><span class="text-xs font-semibold">3:4</span></button>
+                  </div>
+                </div>
+                <!-- Image Count Selector -->
+                <div>
+                  <h3 class="text-sm font-bold text-white mb-2">Number of Images</h3>
+                  <div id="image-count-selector" class="grid grid-cols-4 gap-2">
+                    <button data-value="1" class="image-count-button py-2 px-4 rounded-lg font-bold transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">1</button>
+                    <button data-value="2" class="image-count-button py-2 px-4 rounded-lg font-bold transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">2</button>
+                    <button data-value="3" class="image-count-button py-2 px-4 rounded-lg font-bold transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">3</button>
+                    <button data-value="4" class="image-count-button py-2 px-4 rounded-lg font-bold transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">4</button>
+                  </div>
+                </div>
+                <!-- Advanced Options -->
+                <details id="advanced-options-details" class="group bg-gray-900/50 rounded-lg" open>
+                  <summary class="flex items-center justify-between p-3 cursor-pointer list-none hover:bg-gray-700/50 rounded-lg transition-colors">
+                      <h3 class="font-bold text-white">Advanced Options</h3>
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-400 transition-transform duration-200 group-open:rotate-180" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                  </summary>
+                  <div class="p-4 space-y-6 border-t border-gray-700">
+                    <div class="hidden">
+                      <label for="negative-prompt-input" class="block text-sm font-bold text-white mb-2">Negative Prompt</label>
+                      <textarea id="negative-prompt-input" placeholder="ugly, blurry, deformed, text, watermark..." class="w-full h-24 bg-gray-700/50 border border-gray-600 rounded-lg p-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors resize-none"></textarea>
+                    </div>
+                    <div>
+                      <label for="style-preset-selector" class="block text-sm font-bold text-white mb-2">Style Preset</label>
+                      <select id="style-preset-selector" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5 text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        <option value="none">None (Default)</option>
+                        <option value="photographic">Photographic</option>
+                        <option value="cinematic">Cinematic</option>
+                        <option value="fantasy">Fantasy Art</option>
+                        <option value="anime">Anime</option>
+                        <option value="digital-art">Digital Painting</option>
+                        <option value="low-poly">Low Poly</option>
+                        <option value="watercolor">Watercolor</option>
+                        <option value="pixel-art">Pixel Art</option>
+                        <option value="isometric">Isometric</option>
+                        <option value="line-art">Line Art</option>
+                        <option value="sticker">Sticker</option>
+                      </select>
+                    </div>
+                     <div class="hidden">
+                      <label for="seed-input" class="block text-sm font-bold text-white mb-2">Seed</label>
+                      <div class="flex items-center gap-2">
+                        <input type="number" id="seed-input" placeholder="Random" class="flex-grow w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors">
+                        <button id="random-seed-button" class="flex items-center justify-center gap-2 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 font-semibold py-2.5 px-4 rounded-md transition-colors duration-200 disabled:bg-gray-700/50 disabled:text-gray-500 disabled:cursor-not-allowed" aria-label="Generate random seed">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M15.31 4.69a.75.75 0 01-1.06 0l-1.5-1.5V11a.75.75 0 01-1.5 0V3.19l-1.5 1.5a.75.75 0 01-1.06-1.06l3-3a.75.75 0 011.06 0l3 3a.75.75 0 010 1.06zM4.69 15.31a.75.75 0 011.06 0l1.5 1.5V9a.75.75 0 011.5 0v7.81l1.5-1.5a.75.75 0 111.06 1.06l-3 3a.75.75 0 01-1.06 0l-3-3a.75.75 0 010-1.06zM15 9a.75.75 0 01-.75.75H5.75a.75.75 0 010-1.5h8.5A.75.75 0 0115 9z" clip-rule="evenodd"></path></svg>
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <h3 class="text-sm font-bold text-white mb-2">Image Reference</h3>
+                      <div class="flex items-center gap-4">
+                        <button id="image-reference-upload-button" class="w-24 h-24 flex-shrink-0 bg-gray-700/50 border-2 border-dashed border-gray-600 rounded-lg flex items-center justify-center hover:border-indigo-500 hover:bg-gray-700 transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50">
+                          <img id="image-reference-preview" class="hidden w-full h-full object-cover rounded-md" alt="Reference" />
+                          <svg id="image-reference-placeholder" xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"></path></svg>
+                        </button>
+                        <div class="flex-grow">
+                          <p class="text-sm font-semibold text-white">Describe Image</p>
+                          <p class="text-xs text-gray-400">Upload an image and use the "Describe" button to generate a prompt from it.</p>
+                        </div>
+                        <button id="image-reference-remove-button" class="hidden p-2 bg-red-800/50 text-red-400 rounded-full hover:bg-red-800/80 hover:text-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.134-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.067-2.09 1.02-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"></path></svg>
+                        </button>
+                      </div>
+                      <input id="image-reference-input" type="file" class="hidden" accept="image/png, image/jpeg, image/webp">
+                    </div>
+                  </div>
+                </details>
+                <!-- Generate Button -->
+                <button id="generate-button" class="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 transition-all duration-200 disabled:bg-gray-600 disabled:cursor-not-allowed disabled:text-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-indigo-500">
+                  <svg id="generate-button-icon" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path d="M11.983 1.904a1 1 0 00-1.212-.67L3.43 4.032a1 1 0 00-.662 1.213l3.52 9.21a1 1 0 001.212.67l7.343-2.797a1 1 0 00.662-1.213L11.983 1.904zM4.332 5.145l6.98-2.651 2.924 7.64-6.98 2.652-2.924-7.641z"></path><path d="M14.225 14.156a.75.75 0 01.33.922l-1.42 3.714a.75.75 0 01-.922.33l-3.034-1.156a.75.75 0 01-.33-.922l1.42-3.714a.75.75 0 01.922-.33l3.034 1.156z"></path></svg>
+                  <span id="generate-button-text">Generate</span>
+                </button>
+              </div>
+            </div>
+            <!-- Image Gallery -->
+            <div id="image-gallery-container" class="lg:col-span-8 xl:col-span-9">
+              <!-- Images or placeholders will be injected here -->
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script type="module" src="/index.js"></script>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
